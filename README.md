@@ -41,6 +41,35 @@ from a list.  Here are a few more examples:
 [ { age: 35 }, { age: 40 } ]
 ```
 
+## Compiled Expressions
+```
+var fooBar = jmespath.compile("foo.bar");
+fooBar.search({foo: {bar: {baz: [0, 1, 2, 3, 4]}}})
+
+//Evaluates to { baz: [ 0, 1, 2, 3, 4 ] }
+```
+
+## Custom Functions
+```
+function keyValue(resolvedArguments) {
+    var data = resolvedArguments[0];
+    return Object.keys(data).map(key => (
+        { key: key, value: data[key]}
+    ));
+}
+
+var customFunctions = { 
+    "key_values": { 
+        _func: keyValue,
+        _signature: [{types: [TYPE_OBJECT]}]
+    }
+};
+jmespath.search({foo: {bar: "a", baz: [0, 1, 2, 3, 4]}}, "key_values(foo)", { customFunctions })
+
+//Evaluates to [ {key: "foo", value: "a"}, {key: "baz", value: [0, 1, 2, 3, 4]} ]
+//Alternatively, defaultOptions is exported and customFunctions can be set there which will apply to all jmespath.search
+```
+
 ## More Resources
 
 The example above only show a small amount of what

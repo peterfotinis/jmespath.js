@@ -1122,8 +1122,9 @@
 
   };
 
-  function Runtime(interpreter) {
+  function Runtime(interpreter, options) {
     this._interpreter = interpreter;
+    this._options = options;
     this.functionTable = {
         // name: [function, <signature>]
         // The <signature> can be:
@@ -1208,6 +1209,12 @@
   Runtime.prototype = {
     callFunction: function(name, resolvedArgs) {
       var functionEntry = this.functionTable[name];
+      if (functionEntry === undefined && this._options.customFunctions[name] !== undefined) {
+          functionEntry = this._options.customFunctions[name];
+          if (typeof functionEntry._func != 'function' || !Array.isArray(functionEntry._signature)) {
+            throw new Error("Custom function has invalid _func or _signature: " + name + "()");
+          }
+      }
       if (functionEntry === undefined) {
           throw new Error("Unknown function: " + name + "()");
       }
@@ -1642,31 +1649,63 @@
 
   };
 
-  function compile(stream) {
+  var defaultOptions = {
+    customFunctions: {}
+  };
+
+  function parsedResult(expression, parsed, options) {
+    return {
+      expression: expression,
+      parsed: parsed,
+      search: function(data) {
+        return interpret(data, ast, options);
+      }
+    };
+  }
+
+  function compile(stream, options) {
     var parser = new Parser();
     var ast = parser.parse(stream);
-    return ast;
+    return parsedResult(stream, ast, options);
   }
 
   function tokenize(stream) {
-      var lexer = new Lexer();
-      return lexer.tokenize(stream);
+    var lexer = new Lexer();
+    return lexer.tokenize(stream);
   }
 
-  function search(data, expression) {
-      var parser = new Parser();
-      // This needs to be improved.  Both the interpreter and runtime depend on
-      // each other.  The runtime needs the interpreter to support exprefs.
-      // There's likely a clean way to avoid the cyclic dependency.
-      var runtime = new Runtime();
-      var interpreter = new TreeInterpreter(runtime);
-      runtime._interpreter = interpreter;
-      var node = parser.parse(expression);
-      return interpreter.search(node, data);
+  function interpret(data, ast, options) {
+    var fullOptions = Object.assign({}, defaultOptions, options);
+    // This needs to be improved.  Both the interpreter and runtime depend on
+    // each other.  The runtime needs the interpreter to support exprefs.
+    // There's likely a clean way to avoid the cyclic dependency.
+    var runtime = new Runtime(undefined, fullOptions);
+    var interpreter = new TreeInterpreter(runtime);
+    runtime._interpreter = interpreter;
+    return interpreter.search(ast, data);
   }
 
+  function search(data, expression, options) {
+    var parser = new Parser();
+    var node = parser.parse(expression);
+    return interpret(data, node, options);
+  }
+
+  exports.defaultOptions = defaultOptions;
   exports.tokenize = tokenize;
+  exports.interpret = interpret;
   exports.compile = compile;
   exports.search = search;
   exports.strictDeepEqual = strictDeepEqual;
+
+  exports.TYPE_NUMBER = TYPE_NUMBER;
+  exports.TYPE_ANY = TYPE_ANY;
+  exports.TYPE_STRING = TYPE_STRING;
+  exports.TYPE_ARRAY = TYPE_ARRAY;
+  exports.TYPE_OBJECT = TYPE_OBJECT;
+  exports.TYPE_BOOLEAN = TYPE_BOOLEAN;
+  exports.TYPE_EXPREF = TYPE_EXPREF;
+  exports.TYPE_NULL = TYPE_NULL;
+  exports.TYPE_ARRAY_NUMBER = TYPE_ARRAY_NUMBER;
+  exports.TYPE_ARRAY_STRING = TYPE_ARRAY_STRING;
 })(typeof exports === "undefined" ? this.jmespath = {} : exports);

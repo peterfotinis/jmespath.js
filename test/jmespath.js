@@ -166,7 +166,7 @@ describe('tokenize', function() {
 
 describe('parsing', function() {
     it('should parse field node', function() {
-        assert.deepEqual(compile('foo'),
+        assert.deepEqual(compile('foo').parsed,
                           {type: 'Field', name: 'foo'});
     });
 });

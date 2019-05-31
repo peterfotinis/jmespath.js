@@ -1658,7 +1658,7 @@
       expression: expression,
       parsed: parsed,
       search: function(data) {
-        return interpret(data, ast, options);
+        return interpret(data, parsed, options);
       }
     };
   }
